@@ -423,7 +423,6 @@
         // ============================================
         // CONFIGURATION
         // ============================================
-        const OPENWEATHER_API_KEY = '2dd7cc04f51faf280c9edd948fb598c4'; // Replace with your API key
         const QUOTE_API_URL = 'https://dummyjson.com/quotes/random';
 
         // Supabase configuration
@@ -858,7 +857,7 @@
             }
 
             try {
-                const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(cityName)}&limit=5&appid=${OPENWEATHER_API_KEY}`;
+                const url = `/api/geocode?q=${encodeURIComponent(cityName)}`;
                 const response = await fetch(url);
 
                 if (!response.ok) {
@@ -927,13 +926,8 @@
                 return;
             }
 
-            if (OPENWEATHER_API_KEY === 'YOUR_API_KEY_HERE') {
-                showError(weatherErrorEl, 'Please add your OpenWeatherMap API key to use this feature.');
-                return;
-            }
-
             try {
-                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${cityData.lat}&lon=${cityData.lon}&appid=${OPENWEATHER_API_KEY}&units=imperial`;
+                const url = `/api/weather?lat=${cityData.lat}&lon=${cityData.lon}`;
                 const response = await fetch(url);
 
                 if (!response.ok) {
