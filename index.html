@@ -240,6 +240,65 @@
             min-height: 100px;
         }
 
+        /* History Modal Styles */
+        .history-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .history-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .history-item {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .history-item-recent {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+            border-color: #3b82f6;
+        }
+
+        .history-item-city {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 1rem;
+        }
+
+        .history-item-date {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -336,6 +395,27 @@
             </button>
         </div>
 
+        <!-- Previous Locations Link -->
+        <div class="text-center mt-6">
+            <button id="showHistoryBtn" class="text-blue-500 hover:text-blue-700 underline text-sm">
+                Previous Locations
+            </button>
+        </div>
+
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="history-modal hidden">
+        <div class="history-panel">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Previous Locations</h2>
+                <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <div id="historyList" class="space-y-2 max-h-96 overflow-y-auto">
+                <!-- History items will be inserted here -->
+            </div>
+            <p id="emptyHistoryMsg" class="text-gray-500 text-center py-4 hidden">No previous locations yet.</p>
+        </div>
     </div>
 
     <script>
@@ -366,6 +446,13 @@
         const refreshText = document.getElementById('refreshText');
         const loadingText = document.getElementById('loadingText');
         const weatherIconEl = document.getElementById('weatherIcon');
+
+        // History modal elements
+        const showHistoryBtn = document.getElementById('showHistoryBtn');
+        const historyModal = document.getElementById('historyModal');
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        const historyListEl = document.getElementById('historyList');
+        const emptyHistoryMsg = document.getElementById('emptyHistoryMsg');
 
         // Dynamic background elements
         const mainCard = document.getElementById('mainCard');
@@ -531,6 +618,24 @@
         function getStoredCity() {
             const data = localStorage.getItem('selectedCity');
             return data ? JSON.parse(data) : null;
+        }
+
+        function saveLocationHistory(cityData) {
+            const history = getLocationHistory();
+            // Check if city already exists (by lat/lon)
+            const exists = history.find(h => h.lat === cityData.lat && h.lon === cityData.lon);
+            if (!exists) {
+                history.unshift({
+                    ...cityData,
+                    firstUsed: new Date().toISOString()
+                });
+                localStorage.setItem('locationHistory', JSON.stringify(history));
+            }
+        }
+
+        function getLocationHistory() {
+            const data = localStorage.getItem('locationHistory');
+            return data ? JSON.parse(data) : [];
         }
 
         // ============================================
@@ -744,6 +849,7 @@
             };
 
             saveCity(cityData);
+            saveLocationHistory(cityData);
 
             // Update UI
             cityResultsEl.classList.add('hidden');
@@ -852,6 +958,70 @@
         }
 
         // ============================================
+        // HISTORY MODAL FUNCTIONS
+        // ============================================
+
+        function showHistoryModal() {
+            renderHistoryList();
+            historyModal.classList.remove('hidden');
+        }
+
+        function hideHistoryModal() {
+            historyModal.classList.add('hidden');
+        }
+
+        function renderHistoryList() {
+            const history = getLocationHistory();
+            historyListEl.innerHTML = '';
+
+            if (history.length === 0) {
+                emptyHistoryMsg.classList.remove('hidden');
+                return;
+            }
+
+            emptyHistoryMsg.classList.add('hidden');
+
+            history.forEach((city, index) => {
+                const div = document.createElement('div');
+                div.className = `history-item${index === 0 ? ' history-item-recent' : ''}`;
+
+                const date = new Date(city.firstUsed);
+                const dateStr = date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                const timeStr = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
+                div.innerHTML = `
+                    <div class="history-item-city">${city.displayName}</div>
+                    <div class="history-item-date">${index === 0 ? 'Most Recent — ' : ''}${dateStr} at ${timeStr}</div>
+                `;
+
+                div.onclick = () => selectFromHistory(city);
+                historyListEl.appendChild(div);
+            });
+        }
+
+        async function selectFromHistory(cityData) {
+            hideHistoryModal();
+
+            saveCity(cityData);
+
+            // Update UI
+            selectedCityNameEl.textContent = cityData.displayName;
+            selectedCityEl.classList.remove('hidden');
+
+            // Fetch weather for selected city
+            await getTemperature(cityData);
+        }
+
+        // ============================================
         // EVENT LISTENERS
         // ============================================
 
@@ -866,6 +1036,15 @@
         });
 
         refreshBtn.addEventListener('click', refreshAll);
+
+        // History modal events
+        showHistoryBtn.addEventListener('click', showHistoryModal);
+        closeHistoryBtn.addEventListener('click', hideHistoryModal);
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) {
+                hideHistoryModal();
+            }
+        });
 
         // ============================================
         // INITIALIZATION
