@@ -429,7 +429,7 @@
         // Supabase configuration
         const SUPABASE_URL = 'https://lqbsykztkcjtwlyjqzaq.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_yW3a-vrQl-AvWL-sH2x9kQ_yGJqkqL3';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // Generate or retrieve device ID for anonymous tracking
         function getDeviceId() {
@@ -639,7 +639,7 @@
 
         async function saveLocationHistory(cityData) {
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('location_history')
                     .upsert({
                         device_id: DEVICE_ID,
@@ -663,7 +663,7 @@
 
         async function getLocationHistory() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('location_history')
                     .select('*')
                     .eq('device_id', DEVICE_ID)
