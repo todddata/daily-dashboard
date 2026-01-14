@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather & Inspiration Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* Base transition for smooth background changes */
         body {
@@ -425,6 +426,22 @@
         const OPENWEATHER_API_KEY = '2dd7cc04f51faf280c9edd948fb598c4'; // Replace with your API key
         const QUOTE_API_URL = 'https://dummyjson.com/quotes/random';
 
+        // Supabase configuration
+        const SUPABASE_URL = 'https://lqbsykztkcjtwlyjqzaq.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_yW3a-vrQl-AvWL-sH2x9kQ_yGJqkqL3';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Generate or retrieve device ID for anonymous tracking
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('deviceId');
+            if (!deviceId) {
+                deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+                localStorage.setItem('deviceId', deviceId);
+            }
+            return deviceId;
+        }
+        const DEVICE_ID = getDeviceId();
+
         // ============================================
         // DOM ELEMENTS
         // ============================================
@@ -620,22 +637,57 @@
             return data ? JSON.parse(data) : null;
         }
 
-        function saveLocationHistory(cityData) {
-            const history = getLocationHistory();
-            // Check if city already exists (by lat/lon)
-            const exists = history.find(h => h.lat === cityData.lat && h.lon === cityData.lon);
-            if (!exists) {
-                history.unshift({
-                    ...cityData,
-                    firstUsed: new Date().toISOString()
-                });
-                localStorage.setItem('locationHistory', JSON.stringify(history));
+        async function saveLocationHistory(cityData) {
+            try {
+                const { error } = await supabase
+                    .from('location_history')
+                    .upsert({
+                        device_id: DEVICE_ID,
+                        city_name: cityData.name,
+                        state: cityData.state || null,
+                        country: cityData.country,
+                        lat: cityData.lat,
+                        lon: cityData.lon,
+                        display_name: cityData.displayName
+                    }, {
+                        onConflict: 'device_id,lat,lon'
+                    });
+
+                if (error) {
+                    console.error('Error saving to Supabase:', error);
+                }
+            } catch (err) {
+                console.error('Error saving location history:', err);
             }
         }
 
-        function getLocationHistory() {
-            const data = localStorage.getItem('locationHistory');
-            return data ? JSON.parse(data) : [];
+        async function getLocationHistory() {
+            try {
+                const { data, error } = await supabase
+                    .from('location_history')
+                    .select('*')
+                    .eq('device_id', DEVICE_ID)
+                    .order('first_used', { ascending: false });
+
+                if (error) {
+                    console.error('Error fetching from Supabase:', error);
+                    return [];
+                }
+
+                // Transform to match expected format
+                return data.map(row => ({
+                    name: row.city_name,
+                    state: row.state || '',
+                    country: row.country,
+                    lat: row.lat,
+                    lon: row.lon,
+                    displayName: row.display_name,
+                    firstUsed: row.first_used
+                }));
+            } catch (err) {
+                console.error('Error getting location history:', err);
+                return [];
+            }
         }
 
         // ============================================
@@ -961,17 +1013,19 @@
         // HISTORY MODAL FUNCTIONS
         // ============================================
 
-        function showHistoryModal() {
-            renderHistoryList();
+        async function showHistoryModal() {
             historyModal.classList.remove('hidden');
+            historyListEl.innerHTML = '<p class="text-gray-500 text-center py-4">Loading...</p>';
+            emptyHistoryMsg.classList.add('hidden');
+            await renderHistoryList();
         }
 
         function hideHistoryModal() {
             historyModal.classList.add('hidden');
         }
 
-        function renderHistoryList() {
-            const history = getLocationHistory();
+        async function renderHistoryList() {
+            const history = await getLocationHistory();
             historyListEl.innerHTML = '';
 
             if (history.length === 0) {
