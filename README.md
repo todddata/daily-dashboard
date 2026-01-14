@@ -18,7 +18,8 @@ A beautiful, responsive web dashboard that displays the current time, weather co
   - Floating clouds for cloudy conditions
   - Rain drops for rainy weather
   - Snow particles for snowy conditions
-- **Persistent Storage**: Selected city is saved to localStorage and remembered on return visits
+- **Location History**: View and quickly switch between previously searched cities
+- **Cloud Storage**: Location history stored in Supabase (persists across sessions)
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## Tech Stack
@@ -27,8 +28,10 @@ A beautiful, responsive web dashboard that displays the current time, weather co
 - **Tailwind CSS** - Utility-first CSS framework (loaded via CDN)
 - **Vanilla JavaScript** - No framework dependencies
 - **OpenWeatherMap API** - Weather data and geocoding
+- **Supabase** - Cloud database for location history
+- **Vercel** - Hosting and deployment
 
-## APIs Used
+## APIs & Services
 
 ### OpenWeatherMap Geocoding API
 Used to search for cities by name and get coordinates.
@@ -46,6 +49,36 @@ https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_K
 Used to fetch random inspirational quotes.
 ```
 https://dummyjson.com/quotes/random
+```
+
+### Supabase
+Cloud PostgreSQL database for storing location history.
+- **Table**: `location_history`
+- **Authentication**: Anonymous (device ID based)
+- **Security**: Row Level Security (RLS) enabled
+
+## Database Schema
+
+The `location_history` table in Supabase:
+
+```sql
+CREATE TABLE location_history (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  device_id TEXT NOT NULL,
+  city_name TEXT NOT NULL,
+  state TEXT,
+  country TEXT NOT NULL,
+  lat DECIMAL NOT NULL,
+  lon DECIMAL NOT NULL,
+  display_name TEXT NOT NULL,
+  first_used TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(device_id, lat, lon)
+);
+
+ALTER TABLE location_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow anonymous access" ON location_history
+  FOR ALL USING (true) WITH CHECK (true);
 ```
 
 ## Project Structure
@@ -68,6 +101,11 @@ daily-dashboard/
 - **Deployment**: Automatic on push to GitHub
 - **Framework**: None (static HTML)
 - **Build Settings**: No build step required
+
+### Supabase Project
+- **Project**: WeatherTime
+- **Region**: US East
+- **Database**: PostgreSQL with Row Level Security
 
 ### Deployment Workflow
 1. Make changes to `index.html` locally
@@ -96,18 +134,30 @@ daily-dashboard/
 
 ## Configuration
 
-### API Key
-The OpenWeatherMap API key is configured in `index.html` on line 331:
-```javascript
-const OPENWEATHER_API_KEY = 'your-api-key-here';
-```
+### API Keys
 
-To get your own API key:
-1. Sign up at [OpenWeatherMap](https://openweathermap.org/api)
-2. Generate a free API key
-3. Replace the key in `index.html`
+The app uses the following API keys (configured in `index.html`):
 
-Note: New API keys may take 10 minutes to 2 hours to activate.
+| Service | Key Type | Notes |
+|---------|----------|-------|
+| OpenWeatherMap | API Key | Free tier, rate-limited |
+| Supabase | Anon/Public Key | Designed to be public, RLS protects data |
+
+**Note**: These keys are intentionally included in the client-side code:
+- OpenWeatherMap free tier keys are rate-limited
+- Supabase anon keys are meant to be public (Row Level Security controls access)
+
+### Setting Up Your Own Instance
+
+1. **OpenWeatherMap**:
+   - Sign up at [openweathermap.org](https://openweathermap.org/api)
+   - Generate a free API key
+   - Replace `OPENWEATHER_API_KEY` in `index.html`
+
+2. **Supabase**:
+   - Create a project at [supabase.com](https://supabase.com)
+   - Run the SQL schema (see Database Schema section)
+   - Replace `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `index.html`
 
 ## Browser Support
 
