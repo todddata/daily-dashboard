@@ -227,6 +227,19 @@
             background: rgba(255, 255, 255, 0.9);
         }
 
+        /* Weather icon container with contrasting background */
+        .weather-icon-container {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 100px;
+            min-height: 100px;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -286,15 +299,15 @@
                 <p id="currentTime" class="text-3xl font-bold text-gray-800">--:--</p>
             </div>
 
-            <!-- Current Temperature -->
+            <!-- Current Conditions -->
             <div class="section-card bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-lg">
-                <h2 class="text-sm font-semibold text-gray-600 mb-2">CURRENT TEMPERATURE</h2>
+                <h2 class="text-sm font-semibold text-gray-600 mb-2">CURRENT CONDITIONS</h2>
                 <div class="flex items-center justify-between">
                     <div id="temperatureDisplay">
                         <p id="temperature" class="text-3xl font-bold text-gray-800">--°F</p>
-                        <p id="location" class="text-sm text-gray-600 mt-1">Enter zip code to see weather</p>
+                        <p id="location" class="text-sm text-gray-600 mt-1">Search for a city to see weather</p>
                     </div>
-                    <div id="weatherIcon" class="text-6xl ml-4">
+                    <div id="weatherIcon" class="weather-icon-container">
                         <!-- Weather icon will be inserted here -->
                     </div>
                 </div>
