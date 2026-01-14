@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather & Inspiration Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base transition for smooth background changes */
+        body {
+            transition: background 1s ease-in-out;
+        }
+
+        /* Time-of-day backgrounds */
+        .bg-morning {
+            background: linear-gradient(to bottom, #87CEEB 0%, #FFB347 50%, #FFCC99 100%);
+        }
+        .bg-day {
+            background: linear-gradient(to bottom, #4A90D9 0%, #87CEEB 50%, #B0E0E6 100%);
+        }
+        .bg-evening {
+            background: linear-gradient(to bottom, #2C3E50 0%, #E74C3C 30%, #F39C12 60%, #FFC371 100%);
+        }
+        .bg-night {
+            background: linear-gradient(to bottom, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        }
+
+        /* Stars container */
+        .stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Clouds */
+        .clouds-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .cloud {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            filter: blur(2px);
+        }
+
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: inherit;
+            border-radius: 50%;
+        }
+
+        .cloud-1 {
+            width: 100px;
+            height: 40px;
+            top: 10%;
+            animation: float-cloud 25s linear infinite;
+        }
+        .cloud-1::before { width: 50px; height: 50px; top: -25px; left: 15px; }
+        .cloud-1::after { width: 60px; height: 60px; top: -35px; left: 45px; }
+
+        .cloud-2 {
+            width: 120px;
+            height: 50px;
+            top: 20%;
+            animation: float-cloud 30s linear infinite;
+            animation-delay: -10s;
+        }
+        .cloud-2::before { width: 60px; height: 60px; top: -30px; left: 20px; }
+        .cloud-2::after { width: 70px; height: 70px; top: -40px; left: 55px; }
+
+        .cloud-3 {
+            width: 80px;
+            height: 35px;
+            top: 35%;
+            animation: float-cloud 20s linear infinite;
+            animation-delay: -5s;
+        }
+        .cloud-3::before { width: 45px; height: 45px; top: -22px; left: 10px; }
+        .cloud-3::after { width: 55px; height: 55px; top: -30px; left: 35px; }
+
+        /* Dark clouds for stormy/night */
+        .cloud-dark {
+            background: rgba(100, 100, 100, 0.7);
+        }
+
+        @keyframes float-cloud {
+            0% { left: -200px; }
+            100% { left: 100vw; }
+        }
+
+        /* Rain */
+        .rain-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 2;
+        }
+
+        .raindrop {
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(to bottom, transparent, rgba(174, 194, 224, 0.8));
+            animation: rain-fall linear infinite;
+        }
+
+        @keyframes rain-fall {
+            0% { transform: translateY(-100px); }
+            100% { transform: translateY(100vh); }
+        }
+
+        /* Sun */
+        .sun {
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #FFD700 0%, #FFA500 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 60px 20px rgba(255, 215, 0, 0.5);
+            z-index: 0;
+            animation: pulse-sun 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-sun {
+            0%, 100% { box-shadow: 0 0 60px 20px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 80px 30px rgba(255, 215, 0, 0.7); }
+        }
+
+        /* Moon */
+        .moon {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle at 30% 30%, #FFFACD 0%, #F0E68C 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px 10px rgba(255, 250, 205, 0.3);
+            z-index: 0;
+        }
+
+        .moon::before {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #0f0c29 0%, #302b63 100%);
+            border-radius: 50%;
+            top: -5px;
+            left: 15px;
+        }
+
+        /* Content needs to be above weather effects */
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Card styling for different times */
+        .card-light {
+            background: rgba(255, 255, 255, 0.95);
+        }
+        .card-dark {
+            background: rgba(30, 30, 50, 0.9);
+            color: #f0f0f0;
+        }
+        .card-dark .text-gray-800 { color: #f0f0f0; }
+        .card-dark .text-gray-700 { color: #e0e0e0; }
+        .card-dark .text-gray-600 { color: #c0c0c0; }
+
+        /* Section card backgrounds for dark mode */
+        .card-dark .section-card {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Keep input readable in all modes */
+        #zipCode {
+            background: white !important;
+            color: #1f2937 !important;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-day min-h-screen flex items-center justify-center p-4">
+    <!-- Weather Effects Containers -->
+    <div id="starsContainer" class="stars-container hidden"></div>
+    <div id="cloudsContainer" class="clouds-container hidden"></div>
+    <div id="rainContainer" class="rain-container hidden"></div>
+    <div id="sun" class="sun hidden" style="top: 15%; right: 15%;"></div>
+    <div id="moon" class="moon hidden" style="top: 10%; right: 20%;"></div>
+
+    <div id="mainCard" class="content-wrapper max-w-2xl w-full card-light rounded-2xl shadow-2xl p-8 transition-all duration-500">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Daily Dashboard</h1>
+            <p class="text-gray-600">Your source for time, weather, and inspiration</p>
+        </header>
+
+        <!-- Zip Code Input Section -->
+        <div class="mb-8 section-card bg-gray-50 p-6 rounded-lg">
+            <label for="zipCode" class="block text-sm font-semibold text-gray-700 mb-2">
+                Enter Your Zip Code
+            </label>
+            <div class="flex gap-3">
+                <input
+                    type="text"
+                    id="zipCode"
+                    placeholder="e.g., 10001"
+                    maxlength="5"
+                    class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800"
+                />
+                <button
+                    id="saveZipBtn"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition duration-200"
+                >
+                    Save
+                </button>
+            </div>
+            <p id="zipError" class="text-red-500 text-sm mt-2 hidden"></p>
+        </div>
+
+        <!-- Display Section -->
+        <div class="space-y-6 mb-8">
+            <!-- Current Time -->
+            <div class="section-card bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg">
+                <h2 class="text-sm font-semibold text-gray-600 mb-2">CURRENT TIME</h2>
+                <p id="currentTime" class="text-3xl font-bold text-gray-800">--:--</p>
+            </div>
+
+            <!-- Current Temperature -->
+            <div class="section-card bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-lg">
+                <h2 class="text-sm font-semibold text-gray-600 mb-2">CURRENT TEMPERATURE</h2>
+                <div class="flex items-center justify-between">
+                    <div id="temperatureDisplay">
+                        <p id="temperature" class="text-3xl font-bold text-gray-800">--°F</p>
+                        <p id="location" class="text-sm text-gray-600 mt-1">Enter zip code to see weather</p>
+                    </div>
+                    <div id="weatherIcon" class="text-6xl ml-4">
+                        <!-- Weather icon will be inserted here -->
+                    </div>
+                </div>
+                <p id="weatherError" class="text-red-500 text-sm mt-2 hidden"></p>
+            </div>
+
+            <!-- Inspirational Quote -->
+            <div class="section-card bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-lg">
+                <h2 class="text-sm font-semibold text-gray-600 mb-2">INSPIRATION</h2>
+                <div id="quoteDisplay">
+                    <p id="quote" class="text-xl italic text-gray-700 mb-2">Loading inspiration...</p>
+                    <p id="author" class="text-sm text-gray-600 text-right">— Unknown</p>
+                </div>
+                <p id="quoteError" class="text-red-500 text-sm mt-2 hidden"></p>
+            </div>
+        </div>
+
+        <!-- Refresh Button -->
+        <div class="text-center">
+            <button
+                id="refreshBtn"
+                class="bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-4 rounded-lg transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+                <span id="refreshText">Refresh All</span>
+                <span id="loadingText" class="hidden">Refreshing...</span>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const OPENWEATHER_API_KEY = '2dd7cc04f51faf280c9edd948fb598c4'; // Replace with your API key
+        const QUOTE_API_URL = 'https://dummyjson.com/quotes/random';
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const zipCodeInput = document.getElementById('zipCode');
+        const saveZipBtn = document.getElementById('saveZipBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const currentTimeEl = document.getElementById('currentTime');
+        const temperatureEl = document.getElementById('temperature');
+        const locationEl = document.getElementById('location');
+        const quoteEl = document.getElementById('quote');
+        const authorEl = document.getElementById('author');
+        const zipErrorEl = document.getElementById('zipError');
+        const weatherErrorEl = document.getElementById('weatherError');
+        const quoteErrorEl = document.getElementById('quoteError');
+        const refreshText = document.getElementById('refreshText');
+        const loadingText = document.getElementById('loadingText');
+        const weatherIconEl = document.getElementById('weatherIcon');
+
+        // Dynamic background elements
+        const mainCard = document.getElementById('mainCard');
+        const starsContainer = document.getElementById('starsContainer');
+        const cloudsContainer = document.getElementById('cloudsContainer');
+        const rainContainer = document.getElementById('rainContainer');
+        const sunEl = document.getElementById('sun');
+        const moonEl = document.getElementById('moon');
+
+        // Track current weather for background updates
+        let currentWeatherCondition = 'clear';
+        // Track timezone offset (in seconds) from weather API
+        let locationTimezoneOffset = null;
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        function showError(element, message) {
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        function hideError(element) {
+            element.classList.add('hidden');
+        }
+
+        function validateZipCode(zip) {
+            return /^\d{5}$/.test(zip);
+        }
+
+        function setLoading(isLoading) {
+            refreshBtn.disabled = isLoading;
+            if (isLoading) {
+                refreshText.classList.add('hidden');
+                loadingText.classList.remove('hidden');
+            } else {
+                refreshText.classList.remove('hidden');
+                loadingText.classList.add('hidden');
+            }
+        }
+
+        function getWeatherIcon(condition) {
+            const c = condition.toLowerCase();
+
+            // Sun icon
+            const sunIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <circle cx="32" cy="32" r="12" fill="#FFD700"/>
+                <g stroke="#FFD700" stroke-width="3" stroke-linecap="round">
+                    <line x1="32" y1="8" x2="32" y2="16"/>
+                    <line x1="32" y1="48" x2="32" y2="56"/>
+                    <line x1="8" y1="32" x2="16" y2="32"/>
+                    <line x1="48" y1="32" x2="56" y2="32"/>
+                    <line x1="15" y1="15" x2="21" y2="21"/>
+                    <line x1="43" y1="43" x2="49" y2="49"/>
+                    <line x1="15" y1="49" x2="21" y2="43"/>
+                    <line x1="43" y1="21" x2="49" y2="15"/>
+                </g>
+            </svg>`;
+
+            // Cloud icon
+            const cloudIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <ellipse cx="28" cy="38" rx="16" ry="10" fill="#94A3B8"/>
+                <ellipse cx="42" cy="36" rx="14" ry="12" fill="#CBD5E1"/>
+                <circle cx="24" cy="32" r="10" fill="#CBD5E1"/>
+                <circle cx="36" cy="28" r="12" fill="#E2E8F0"/>
+            </svg>`;
+
+            // Rain icon
+            const rainIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <ellipse cx="28" cy="26" rx="14" ry="9" fill="#94A3B8"/>
+                <ellipse cx="40" cy="24" rx="12" ry="10" fill="#CBD5E1"/>
+                <circle cx="24" cy="20" r="9" fill="#CBD5E1"/>
+                <circle cx="34" cy="17" r="10" fill="#E2E8F0"/>
+                <g fill="#60A5FA">
+                    <ellipse cx="20" cy="44" rx="2" ry="4"/>
+                    <ellipse cx="32" cy="48" rx="2" ry="4"/>
+                    <ellipse cx="44" cy="44" rx="2" ry="4"/>
+                    <ellipse cx="26" cy="54" rx="2" ry="4"/>
+                    <ellipse cx="38" cy="56" rx="2" ry="4"/>
+                </g>
+            </svg>`;
+
+            // Thunderstorm icon
+            const thunderIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <ellipse cx="28" cy="22" rx="14" ry="9" fill="#64748B"/>
+                <ellipse cx="40" cy="20" rx="12" ry="10" fill="#475569"/>
+                <circle cx="24" cy="16" r="9" fill="#475569"/>
+                <circle cx="34" cy="13" r="10" fill="#64748B"/>
+                <polygon points="32,28 26,42 34,42 28,58 42,38 34,38 40,28" fill="#FBBF24"/>
+            </svg>`;
+
+            // Snow icon
+            const snowIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <ellipse cx="28" cy="24" rx="14" ry="9" fill="#94A3B8"/>
+                <ellipse cx="40" cy="22" rx="12" ry="10" fill="#CBD5E1"/>
+                <circle cx="24" cy="18" r="9" fill="#CBD5E1"/>
+                <circle cx="34" cy="15" r="10" fill="#E2E8F0"/>
+                <g fill="#E0F2FE">
+                    <circle cx="20" cy="42" r="3"/>
+                    <circle cx="32" cy="48" r="3"/>
+                    <circle cx="44" cy="44" r="3"/>
+                    <circle cx="26" cy="54" r="3"/>
+                    <circle cx="38" cy="56" r="3"/>
+                </g>
+            </svg>`;
+
+            // Mist/fog icon
+            const mistIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <g stroke="#94A3B8" stroke-width="4" stroke-linecap="round" fill="none">
+                    <path d="M12 20 Q32 16, 52 20"/>
+                    <path d="M8 32 Q32 28, 56 32"/>
+                    <path d="M12 44 Q32 40, 52 44"/>
+                </g>
+            </svg>`;
+
+            // Partly cloudy (sun + cloud)
+            const partlyCloudyIcon = `<svg viewBox="0 0 64 64" class="w-24 h-24">
+                <circle cx="24" cy="20" r="10" fill="#FFD700"/>
+                <g stroke="#FFD700" stroke-width="2" stroke-linecap="round">
+                    <line x1="24" y1="4" x2="24" y2="8"/>
+                    <line x1="10" y1="20" x2="6" y2="20"/>
+                    <line x1="12" y1="8" x2="15" y2="11"/>
+                    <line x1="36" y1="8" x2="33" y2="11"/>
+                </g>
+                <ellipse cx="32" cy="42" rx="14" ry="9" fill="#94A3B8"/>
+                <ellipse cx="44" cy="40" rx="12" ry="10" fill="#CBD5E1"/>
+                <circle cx="28" cy="36" r="9" fill="#CBD5E1"/>
+                <circle cx="38" cy="33" r="10" fill="#E2E8F0"/>
+            </svg>`;
+
+            // Match weather conditions
+            if (c.includes('thunder')) return thunderIcon;
+            if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) return rainIcon;
+            if (c.includes('snow') || c.includes('sleet')) return snowIcon;
+            if (c.includes('mist') || c.includes('fog') || c.includes('haze') || c.includes('smoke')) return mistIcon;
+            if (c.includes('overcast') || c.includes('broken clouds')) return cloudIcon;
+            if (c.includes('cloud') || c.includes('few clouds') || c.includes('scattered')) return partlyCloudyIcon;
+            if (c.includes('clear') || c.includes('sunny')) return sunIcon;
+
+            return sunIcon; // default
+        }
+
+        function updateWeatherIcon(condition) {
+            weatherIconEl.innerHTML = getWeatherIcon(condition);
+        }
+
+        // ============================================
+        // LOCAL STORAGE FUNCTIONS
+        // ============================================
+
+        function saveZipCode(zip) {
+            localStorage.setItem('zipCode', zip);
+        }
+
+        function getStoredZipCode() {
+            return localStorage.getItem('zipCode');
+        }
+
+        // ============================================
+        // DYNAMIC BACKGROUND FUNCTIONS
+        // ============================================
+
+        function getLocationTime() {
+            const now = new Date();
+            if (locationTimezoneOffset !== null) {
+                // Convert to UTC, then apply the location's timezone offset
+                const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+                return new Date(utcTime + (locationTimezoneOffset * 1000));
+            }
+            return now;
+        }
+
+        function getTimeOfDay() {
+            const hour = getLocationTime().getHours();
+            if (hour >= 5 && hour < 8) return 'morning';
+            if (hour >= 8 && hour < 17) return 'day';
+            if (hour >= 17 && hour < 20) return 'evening';
+            return 'night';
+        }
+
+        function createStars() {
+            starsContainer.innerHTML = '';
+            const starCount = 100;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.width = `${Math.random() * 3 + 1}px`;
+                star.style.height = star.style.width;
+                star.style.animationDelay = `${Math.random() * 2}s`;
+                star.style.animationDuration = `${Math.random() * 2 + 1}s`;
+                starsContainer.appendChild(star);
+            }
+        }
+
+        function createClouds(isDark = false) {
+            cloudsContainer.innerHTML = '';
+            const cloudClasses = ['cloud-1', 'cloud-2', 'cloud-3'];
+            cloudClasses.forEach(cloudClass => {
+                const cloud = document.createElement('div');
+                cloud.className = `cloud ${cloudClass}${isDark ? ' cloud-dark' : ''}`;
+                cloudsContainer.appendChild(cloud);
+            });
+        }
+
+        function createRain() {
+            rainContainer.innerHTML = '';
+            const dropCount = 80;
+            for (let i = 0; i < dropCount; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'raindrop';
+                drop.style.left = `${Math.random() * 100}%`;
+                drop.style.animationDuration = `${Math.random() * 0.5 + 0.5}s`;
+                drop.style.animationDelay = `${Math.random() * 2}s`;
+                rainContainer.appendChild(drop);
+            }
+        }
+
+        function hideAllWeatherEffects() {
+            starsContainer.classList.add('hidden');
+            cloudsContainer.classList.add('hidden');
+            rainContainer.classList.add('hidden');
+            sunEl.classList.add('hidden');
+            moonEl.classList.add('hidden');
+        }
+
+        function updateBackground() {
+            const timeOfDay = getTimeOfDay();
+            const weather = currentWeatherCondition;
+            const isNight = timeOfDay === 'night';
+            const isEvening = timeOfDay === 'evening';
+            const isDark = isNight || isEvening;
+
+            // Remove all background classes
+            document.body.classList.remove('bg-morning', 'bg-day', 'bg-evening', 'bg-night');
+
+            // Hide all weather effects first
+            hideAllWeatherEffects();
+
+            // Set time-based background
+            document.body.classList.add(`bg-${timeOfDay}`);
+
+            // Update card styling based on darkness
+            if (isDark) {
+                mainCard.classList.remove('card-light');
+                mainCard.classList.add('card-dark');
+            } else {
+                mainCard.classList.remove('card-dark');
+                mainCard.classList.add('card-light');
+            }
+
+            // Show celestial body
+            if (isNight) {
+                moonEl.classList.remove('hidden');
+                createStars();
+                starsContainer.classList.remove('hidden');
+            } else if (timeOfDay === 'day' || timeOfDay === 'morning') {
+                sunEl.classList.remove('hidden');
+            }
+
+            // Add weather effects based on conditions
+            if (weather === 'clouds' || weather === 'few clouds' || weather === 'scattered clouds' || weather === 'broken clouds' || weather === 'overcast clouds') {
+                createClouds(isDark);
+                cloudsContainer.classList.remove('hidden');
+            } else if (weather === 'rain' || weather === 'light rain' || weather === 'moderate rain' || weather === 'heavy rain' || weather === 'drizzle' || weather === 'shower rain') {
+                createClouds(true);
+                cloudsContainer.classList.remove('hidden');
+                createRain();
+                rainContainer.classList.remove('hidden');
+            } else if (weather === 'thunderstorm') {
+                createClouds(true);
+                cloudsContainer.classList.remove('hidden');
+                createRain();
+                rainContainer.classList.remove('hidden');
+            } else if (weather === 'snow' || weather === 'light snow') {
+                createClouds(isDark);
+                cloudsContainer.classList.remove('hidden');
+            } else if (weather === 'mist' || weather === 'fog' || weather === 'haze') {
+                createClouds(isDark);
+                cloudsContainer.classList.remove('hidden');
+            }
+        }
+
+        // ============================================
+        // TIME FUNCTION
+        // ============================================
+
+        let lastTimeOfDay = null;
+
+        function updateCurrentTime() {
+            const locationTime = getLocationTime();
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            currentTimeEl.textContent = locationTime.toLocaleString('en-US', options);
+
+            // Check if time of day changed and update background
+            const currentTimeOfDay = getTimeOfDay();
+            if (currentTimeOfDay !== lastTimeOfDay) {
+                lastTimeOfDay = currentTimeOfDay;
+                updateBackground();
+            }
+        }
+
+        // ============================================
+        // WEATHER FUNCTION
+        // ============================================
+
+        async function getTemperature(zipCode) {
+            hideError(weatherErrorEl);
+
+            if (!zipCode) {
+                locationEl.textContent = 'Enter zip code to see weather';
+                return;
+            }
+
+            if (OPENWEATHER_API_KEY === 'YOUR_API_KEY_HERE') {
+                showError(weatherErrorEl, 'Please add your OpenWeatherMap API key to use this feature.');
+                return;
+            }
+
+            try {
+                const url = `https://api.openweathermap.org/data/2.5/weather?zip=${zipCode},US&appid=${OPENWEATHER_API_KEY}&units=imperial`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Invalid zip code. Please check and try again.');
+                    }
+                    if (response.status === 401) {
+                        throw new Error('API key unauthorized. New OpenWeatherMap keys can take 10 minutes to 2 hours to activate. Please wait and try again.');
+                    }
+                    throw new Error('Unable to fetch weather data. Please try again.');
+                }
+
+                const data = await response.json();
+                temperatureEl.textContent = `${Math.round(data.main.temp)}°F`;
+                locationEl.textContent = `${data.name}, ${data.sys.country} - ${data.weather[0].description}`;
+
+                // Store timezone offset from API (in seconds from UTC)
+                locationTimezoneOffset = data.timezone;
+
+                // Update weather condition for background and icon
+                currentWeatherCondition = data.weather[0].description.toLowerCase();
+                updateWeatherIcon(currentWeatherCondition);
+                updateBackground();
+
+            } catch (error) {
+                showError(weatherErrorEl, error.message);
+                temperatureEl.textContent = '--°F';
+                locationEl.textContent = 'Unable to load weather';
+                weatherIconEl.innerHTML = '';
+                currentWeatherCondition = 'clear';
+                updateBackground();
+            }
+        }
+
+        // ============================================
+        // QUOTE FUNCTION
+        // ============================================
+
+        async function getInspirationalQuote() {
+            hideError(quoteErrorEl);
+
+            try {
+                const response = await fetch(QUOTE_API_URL);
+
+                if (!response.ok) {
+                    throw new Error('Unable to fetch quote');
+                }
+
+                const data = await response.json();
+                quoteEl.textContent = `"${data.quote}"`;
+                authorEl.textContent = `— ${data.author}`;
+
+            } catch (error) {
+                showError(quoteErrorEl, 'Unable to load quote. Please try again.');
+                quoteEl.textContent = '"The only way to do great work is to love what you do."';
+                authorEl.textContent = '— Steve Jobs';
+            }
+        }
+
+        // ============================================
+        // REFRESH FUNCTION
+        // ============================================
+
+        async function refreshAll() {
+            setLoading(true);
+
+            const zipCode = getStoredZipCode();
+
+            updateCurrentTime();
+
+            await Promise.all([
+                getTemperature(zipCode),
+                getInspirationalQuote()
+            ]);
+
+            setLoading(false);
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+
+        saveZipBtn.addEventListener('click', async () => {
+            const zip = zipCodeInput.value.trim();
+            hideError(zipErrorEl);
+
+            if (!validateZipCode(zip)) {
+                showError(zipErrorEl, 'Please enter a valid 5-digit US zip code.');
+                return;
+            }
+
+            saveZipCode(zip);
+            showError(zipErrorEl, 'Zip code saved!');
+            zipErrorEl.classList.remove('text-red-500');
+            zipErrorEl.classList.add('text-green-600');
+
+            setTimeout(() => {
+                hideError(zipErrorEl);
+                zipErrorEl.classList.remove('text-green-600');
+                zipErrorEl.classList.add('text-red-500');
+            }, 2000);
+
+            await getTemperature(zip);
+        });
+
+        zipCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveZipBtn.click();
+            }
+        });
+
+        refreshBtn.addEventListener('click', refreshAll);
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const storedZip = getStoredZipCode();
+
+            if (storedZip) {
+                zipCodeInput.value = storedZip;
+            }
+
+            // Initialize background
+            updateBackground();
+
+            // Update time every second (this will also check for time-of-day changes)
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+
+            await getInspirationalQuote();
+
+            if (storedZip) {
+                await getTemperature(storedZip);
+            }
+        });
+    </script>
+</body>
+</html>
