@@ -202,9 +202,29 @@
         }
 
         /* Keep input readable in all modes */
-        #zipCode {
+        #cityInput {
             background: white !important;
             color: #1f2937 !important;
+        }
+
+        /* City selection buttons */
+        .city-option {
+            background: white;
+            border: 2px solid #e5e7eb;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            width: 100%;
+            color: #1f2937;
+        }
+        .city-option:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .card-dark .city-option {
+            background: rgba(255, 255, 255, 0.9);
         }
 
         .hidden { display: none !important; }
@@ -225,27 +245,37 @@
             <p class="text-gray-600">Your source for time, weather, and inspiration</p>
         </header>
 
-        <!-- Zip Code Input Section -->
+        <!-- City Search Section -->
         <div class="mb-8 section-card bg-gray-50 p-6 rounded-lg">
-            <label for="zipCode" class="block text-sm font-semibold text-gray-700 mb-2">
-                Enter Your Zip Code
+            <label for="cityInput" class="block text-sm font-semibold text-gray-700 mb-2">
+                Enter City Name
             </label>
             <div class="flex gap-3">
                 <input
                     type="text"
-                    id="zipCode"
-                    placeholder="e.g., 10001"
-                    maxlength="5"
+                    id="cityInput"
+                    placeholder="e.g., Denver, CO or Paris, France"
                     class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-800"
                 />
                 <button
-                    id="saveZipBtn"
+                    id="searchCityBtn"
                     class="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition duration-200"
                 >
-                    Save
+                    Search
                 </button>
             </div>
-            <p id="zipError" class="text-red-500 text-sm mt-2 hidden"></p>
+            <!-- City Results Dropdown -->
+            <div id="cityResults" class="mt-3 hidden">
+                <p class="text-sm text-gray-600 mb-2">Select your city:</p>
+                <div id="cityList" class="space-y-2 max-h-48 overflow-y-auto">
+                    <!-- City options will be inserted here -->
+                </div>
+            </div>
+            <!-- Selected City Display -->
+            <div id="selectedCity" class="mt-3 hidden">
+                <p class="text-sm text-gray-600">Current location: <span id="selectedCityName" class="font-semibold text-gray-800"></span></p>
+            </div>
+            <p id="cityError" class="text-red-500 text-sm mt-2 hidden"></p>
         </div>
 
         <!-- Display Section -->
@@ -305,15 +335,19 @@
         // ============================================
         // DOM ELEMENTS
         // ============================================
-        const zipCodeInput = document.getElementById('zipCode');
-        const saveZipBtn = document.getElementById('saveZipBtn');
+        const cityInput = document.getElementById('cityInput');
+        const searchCityBtn = document.getElementById('searchCityBtn');
+        const cityResultsEl = document.getElementById('cityResults');
+        const cityListEl = document.getElementById('cityList');
+        const selectedCityEl = document.getElementById('selectedCity');
+        const selectedCityNameEl = document.getElementById('selectedCityName');
+        const cityErrorEl = document.getElementById('cityError');
         const refreshBtn = document.getElementById('refreshBtn');
         const currentTimeEl = document.getElementById('currentTime');
         const temperatureEl = document.getElementById('temperature');
         const locationEl = document.getElementById('location');
         const quoteEl = document.getElementById('quote');
         const authorEl = document.getElementById('author');
-        const zipErrorEl = document.getElementById('zipError');
         const weatherErrorEl = document.getElementById('weatherError');
         const quoteErrorEl = document.getElementById('quoteError');
         const refreshText = document.getElementById('refreshText');
@@ -346,8 +380,15 @@
             element.classList.add('hidden');
         }
 
-        function validateZipCode(zip) {
-            return /^\d{5}$/.test(zip);
+        function showSuccess(element, message) {
+            element.textContent = message;
+            element.classList.remove('hidden', 'text-red-500');
+            element.classList.add('text-green-600');
+            setTimeout(() => {
+                hideError(element);
+                element.classList.remove('text-green-600');
+                element.classList.add('text-red-500');
+            }, 2000);
         }
 
         function setLoading(isLoading) {
@@ -470,12 +511,13 @@
         // LOCAL STORAGE FUNCTIONS
         // ============================================
 
-        function saveZipCode(zip) {
-            localStorage.setItem('zipCode', zip);
+        function saveCity(cityData) {
+            localStorage.setItem('selectedCity', JSON.stringify(cityData));
         }
 
-        function getStoredZipCode() {
-            return localStorage.getItem('zipCode');
+        function getStoredCity() {
+            const data = localStorage.getItem('selectedCity');
+            return data ? JSON.parse(data) : null;
         }
 
         // ============================================
@@ -633,14 +675,84 @@
         }
 
         // ============================================
+        // CITY SEARCH FUNCTION
+        // ============================================
+
+        async function searchCities(cityName) {
+            hideError(cityErrorEl);
+            cityResultsEl.classList.add('hidden');
+
+            if (!cityName.trim()) {
+                showError(cityErrorEl, 'Please enter a city name.');
+                return;
+            }
+
+            try {
+                const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(cityName)}&limit=5&appid=${OPENWEATHER_API_KEY}`;
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error('Unable to search for cities. Please try again.');
+                }
+
+                const cities = await response.json();
+
+                if (cities.length === 0) {
+                    showError(cityErrorEl, 'No cities found. Try a different search term.');
+                    return;
+                }
+
+                // Display city options
+                cityListEl.innerHTML = '';
+                cities.forEach((city, index) => {
+                    const stateOrCountry = city.state ? `${city.state}, ${city.country}` : city.country;
+                    const button = document.createElement('button');
+                    button.className = 'city-option';
+                    button.innerHTML = `<strong>${city.name}</strong><br><span class="text-sm text-gray-500">${stateOrCountry}</span>`;
+                    button.onclick = () => selectCity(city);
+                    cityListEl.appendChild(button);
+                });
+
+                cityResultsEl.classList.remove('hidden');
+
+            } catch (error) {
+                showError(cityErrorEl, error.message);
+            }
+        }
+
+        async function selectCity(city) {
+            const cityData = {
+                name: city.name,
+                state: city.state || '',
+                country: city.country,
+                lat: city.lat,
+                lon: city.lon,
+                displayName: city.state ? `${city.name}, ${city.state}, ${city.country}` : `${city.name}, ${city.country}`
+            };
+
+            saveCity(cityData);
+
+            // Update UI
+            cityResultsEl.classList.add('hidden');
+            selectedCityNameEl.textContent = cityData.displayName;
+            selectedCityEl.classList.remove('hidden');
+            cityInput.value = '';
+
+            showSuccess(cityErrorEl, 'Location saved!');
+
+            // Fetch weather for selected city
+            await getTemperature(cityData);
+        }
+
+        // ============================================
         // WEATHER FUNCTION
         // ============================================
 
-        async function getTemperature(zipCode) {
+        async function getTemperature(cityData) {
             hideError(weatherErrorEl);
 
-            if (!zipCode) {
-                locationEl.textContent = 'Enter zip code to see weather';
+            if (!cityData) {
+                locationEl.textContent = 'Search for a city to see weather';
                 return;
             }
 
@@ -650,15 +762,12 @@
             }
 
             try {
-                const url = `https://api.openweathermap.org/data/2.5/weather?zip=${zipCode},US&appid=${OPENWEATHER_API_KEY}&units=imperial`;
+                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${cityData.lat}&lon=${cityData.lon}&appid=${OPENWEATHER_API_KEY}&units=imperial`;
                 const response = await fetch(url);
 
                 if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('Invalid zip code. Please check and try again.');
-                    }
                     if (response.status === 401) {
-                        throw new Error('API key unauthorized. New OpenWeatherMap keys can take 10 minutes to 2 hours to activate. Please wait and try again.');
+                        throw new Error('API key unauthorized. Please wait and try again.');
                     }
                     throw new Error('Unable to fetch weather data. Please try again.');
                 }
@@ -717,12 +826,12 @@
         async function refreshAll() {
             setLoading(true);
 
-            const zipCode = getStoredZipCode();
+            const cityData = getStoredCity();
 
             updateCurrentTime();
 
             await Promise.all([
-                getTemperature(zipCode),
+                getTemperature(cityData),
                 getInspirationalQuote()
             ]);
 
@@ -733,32 +842,13 @@
         // EVENT LISTENERS
         // ============================================
 
-        saveZipBtn.addEventListener('click', async () => {
-            const zip = zipCodeInput.value.trim();
-            hideError(zipErrorEl);
-
-            if (!validateZipCode(zip)) {
-                showError(zipErrorEl, 'Please enter a valid 5-digit US zip code.');
-                return;
-            }
-
-            saveZipCode(zip);
-            showError(zipErrorEl, 'Zip code saved!');
-            zipErrorEl.classList.remove('text-red-500');
-            zipErrorEl.classList.add('text-green-600');
-
-            setTimeout(() => {
-                hideError(zipErrorEl);
-                zipErrorEl.classList.remove('text-green-600');
-                zipErrorEl.classList.add('text-red-500');
-            }, 2000);
-
-            await getTemperature(zip);
+        searchCityBtn.addEventListener('click', () => {
+            searchCities(cityInput.value);
         });
 
-        zipCodeInput.addEventListener('keypress', (e) => {
+        cityInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                saveZipBtn.click();
+                searchCities(cityInput.value);
             }
         });
 
@@ -769,10 +859,11 @@
         // ============================================
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const storedZip = getStoredZipCode();
+            const storedCity = getStoredCity();
 
-            if (storedZip) {
-                zipCodeInput.value = storedZip;
+            if (storedCity) {
+                selectedCityNameEl.textContent = storedCity.displayName;
+                selectedCityEl.classList.remove('hidden');
             }
 
             // Initialize background
@@ -784,8 +875,8 @@
 
             await getInspirationalQuote();
 
-            if (storedZip) {
-                await getTemperature(storedZip);
+            if (storedCity) {
+                await getTemperature(storedCity);
             }
         });
     </script>
